@@ -1,6 +1,6 @@
 import fs from "fs";
 import path from "path";
-import { JSONParser } from "../typescript";
+import { JSONParser } from "../typescript/json-parser";
 
 describe("JSONParser", () => {
   const originalExit = process.exit;
