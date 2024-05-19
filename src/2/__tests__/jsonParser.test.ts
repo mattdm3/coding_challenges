@@ -2,8 +2,6 @@ import fs from "fs";
 import path from "path";
 import { JSONParser } from "../typescript";
 
-jest.mock("fs");
-
 describe("JSONParser", () => {
   const originalExit = process.exit;
 
@@ -36,5 +34,27 @@ describe("JSONParser", () => {
     const mockData = fs.readFileSync(invalidFilePath, "utf-8");
     new JSONParser(mockData);
     expect(process.exit).toHaveBeenCalledWith(1);
+  });
+
+  it("should throw an error for invalid JSON in Step 2", () => {
+    const invalidFilePath = path.resolve(
+      __dirname,
+      "../tests/step2/invalid.json"
+    );
+    const mockData = fs.readFileSync(invalidFilePath, "utf-8");
+    new JSONParser(mockData);
+
+    expect(process.exit).toHaveBeenCalledWith(1);
+  });
+
+  it("should not  an error for valid JSON in Step 2", () => {
+    const invalidFilePath = path.resolve(
+      __dirname,
+      "../tests/step2/valid.json"
+    );
+    const mockData = fs.readFileSync(invalidFilePath, "utf-8");
+    expect(() => {
+      new JSONParser(mockData);
+    }).not.toThrow();
   });
 });
