@@ -1,5 +1,3 @@
-import fs from "fs";
-import path, { parse } from "path";
 import { TOKENS } from "./tokens";
 
 const FAILURE_EXIT_CODE = 1;
@@ -13,38 +11,40 @@ export class JSONParser {
   input!: string;
   private position: number = 0;
   tokens: Token[] = [];
+  parsedValue: any;
 
   constructor(input: string) {
     if (!input) {
-      return process.exit(1);
+      this.handleError("Invalid JSON input", this.position);
     }
     this.input = input;
     this.tokenize(this.input);
-    this.parse(this.tokens);
+    const value = this.parse(this.tokens);
+    this.parsedValue = value;
+    return process.exit(SUCCESS_EXIT_CODE);
+  }
+
+  private handleError(message: string, position: number): void {
+    console.error(`Error: ${message} at position ${position}`);
+    return process.exit(FAILURE_EXIT_CODE);
   }
 
   public parseObject() {
     const obj: { [key: string]: any } = {};
     this.position++; // skip open object token
-
     while (this.tokens[this.position].type !== TOKENS.CLOSE_OBJECT) {
       const keyToken = this.tokens[this.position];
       if (keyToken.type !== TOKENS.STRING) {
-        return process.exit(1);
-        // throw new Error(
-        //   `Expected string for object key, but got ${keyToken.type}`
-        // );
+        return this.handleError(
+          "Expected string for object key",
+          this.position
+        );
       }
       this.position++;
       const key = keyToken.value;
 
       if (this.tokens[this.position].type !== TOKENS.COLON) {
-        return process.exit(1);
-        // throw new Error(
-        //   `Expected colon after string, but got ${
-        //     this.tokens[this.position].type
-        //   }`
-        // );
+        return this.handleError("Expected colon for object key", this.position);
       }
       this.position++; // Skip COLON token
 
@@ -57,12 +57,10 @@ export class JSONParser {
       ) {
         this.position++; // Skip COMMA token
       } else if (this.tokens[this.position].type !== TOKENS.CLOSE_OBJECT) {
-        return process.exit(1);
-        // throw new Error(
-        //   `Expected comma or closing brace, but got ${
-        //     this.tokens[this.position].type
-        //   } followed by a ${this.tokens[this.position + 1].type}`
-        // );
+        return this.handleError(
+          "Expected comma or closing brace",
+          this.position
+        );
       }
     }
     this.position++; // Skip CLOSE_OBJECT token
@@ -70,18 +68,29 @@ export class JSONParser {
   }
 
   public parseArray() {
-    const obj = {};
+    const arr: any[] = [];
     this.position++; // skip open object token
 
-    while (this.tokens[this.position].type !== TOKENS.CLOSE_OBJECT) {
-      const key = this.parse(this.tokens);
+    while (this.tokens[this.position].type !== TOKENS.CLOSE_ARRAY) {
+      const value = this.parse(this.tokens);
+      arr.push(value);
+      if (this.tokens[this.position].type === TOKENS.COMMA) {
+        this.position++;
+      } else if (this.tokens[this.position].type !== TOKENS.CLOSE_ARRAY) {
+        return this.handleError(
+          "Expected comma or closing brace",
+          this.position
+        );
+      }
     }
+    this.position++;
+    return arr;
   }
 
   public parse(tokens: Token[]) {
     const token = tokens[this.position];
 
-    switch (token.type) {
+    switch (token?.type) {
       case TOKENS.OPEN_OBJECT:
         return this.parseObject();
       case TOKENS.OPEN_ARRAY:
@@ -99,11 +108,11 @@ export class JSONParser {
         this.position++;
         return null;
       default:
-        throw new Error(`Unexpected token: ${token.type}`);
+        return this.handleError("Expected valid token", this.position);
     }
   }
 
-  public tokenize(input: string): Token[] {
+  public tokenize(input: string): Token[] | void {
     // Implement logic to iterate over input string and produce tokens
     // Example: [{type: 'TOKENS.OPEN_OBJECT', value: '{'}, {type: 'STRING', value: '"key"'}, ...]
     const tokens: Token[] = [];
@@ -175,7 +184,10 @@ export class JSONParser {
             tokens.push({ type: TOKENS.NULL, value: "null" });
             i += 4;
           } else {
-            throw new Error(`Unexpected character: ${char}`);
+            return this.handleError(
+              `Unexpected character: ${char}`,
+              this.position
+            );
           }
           break;
       }
@@ -188,12 +200,3 @@ export class JSONParser {
     return this.input.charAt(this.position);
   }
 }
-// const run = async () => {
-//   const validFilePath = path.resolve(__dirname, "../tests/step2/invalid.json");
-//   const contentFromPath = fs.readFileSync(validFilePath, "utf-8");
-//   const parser = new JSONParser(contentFromPath);
-//   console.log({ parser });
-//   console.log("tokesn;", parser?.tokens);
-// };
-
-// run();
